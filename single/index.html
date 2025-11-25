@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PR Savings Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --panel: #ffffff;
+      --text: #0f172a;
+      --muted: #6b7280;
+      --primary: #2563eb;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --border: #e5e7eb;
+      --card-shadow: 0 10px 30px rgba(15, 23, 42, 0.07);
+    }
+
+    body.dark {
+      --bg: #0f172a;
+      --panel: #111827;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --primary: #60a5fa;
+      --success: #4ade80;
+      --danger: #f87171;
+      --border: #1f2937;
+      --card-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      transition: background 0.3s ease, color 0.3s ease;
+      min-height: 100vh;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      padding: 20px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      box-shadow: var(--card-shadow);
+      transition: width 0.3s ease, padding 0.3s ease;
+    }
+
+    .sidebar.collapsed {
+      width: 76px;
+      padding: 20px 12px;
+    }
+
+    .sidebar h1 {
+      font-size: 18px;
+      margin: 0 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sidebar button.toggle {
+      background: var(--primary);
+      border: none;
+      color: #fff;
+      padding: 10px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      width: 100%;
+      font-weight: 600;
+      margin-bottom: 20px;
+      box-shadow: var(--card-shadow);
+      transition: transform 0.2s ease, box-shadow 0.3s ease;
+    }
+
+    .sidebar button.toggle:hover {
+      transform: translateY(-1px);
+    }
+
+    .nav {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .nav button {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 12px;
+      border-radius: 12px;
+      text-align: left;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .nav button.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+      box-shadow: var(--card-shadow);
+    }
+
+    .nav button:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .sidebar.collapsed .nav button {
+      text-align: center;
+      padding: 12px 8px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 28px;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: var(--panel);
+      z-index: 1;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .badge {
+      background: var(--primary);
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 12px;
+    }
+
+    .theme-toggle {
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .content {
+      background: var(--bg);
+      min-height: 100vh;
+    }
+
+    .view {
+      display: none;
+      padding: 24px 28px 40px;
+    }
+
+    .view.active {
+      display: block;
+    }
+
+    .grid {
+      display: grid;
+      gap: 20px;
+    }
+
+    .cards {
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px 18px 14px;
+      box-shadow: var(--card-shadow);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+    }
+
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 15px;
+      color: var(--muted);
+    }
+
+    .card .value {
+      font-size: 26px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .trend.up {
+      color: var(--success);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .trend.down {
+      color: var(--danger);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: var(--card-shadow);
+    }
+
+    .panel h2 {
+      margin: 0 0 12px;
+    }
+
+    form {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    input, select {
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      transition: border 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    .btn {
+      border: none;
+      cursor: pointer;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: center;
+      transition: transform 0.1s ease, box-shadow 0.2s ease;
+    }
+
+    .btn.primary {
+      background: linear-gradient(90deg, #2563eb, #4f46e5);
+      color: #fff;
+      box-shadow: var(--card-shadow);
+    }
+
+    .btn.secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .btn.danger {
+      background: #dc2626;
+      color: #fff;
+      box-shadow: var(--card-shadow);
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--border);
+      padding: 10px 6px;
+      text-align: left;
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 12px;
+    }
+
+    tr:hover td {
+      background: rgba(37, 99, 235, 0.06);
+    }
+
+    .chip {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(37, 99, 235, 0.1);
+      color: var(--primary);
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    .insight-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    .square {
+      border: 1px dashed var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      background: var(--panel);
+      box-shadow: var(--card-shadow);
+    }
+
+    .square h4 { margin: 0 0 6px; }
+
+    .square .big { font-size: 24px; font-weight: 800; }
+
+    .flex { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+
+    .upload {
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      background: rgba(37, 99, 235, 0.05);
+    }
+
+    @media (max-width: 960px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { position: relative; height: auto; }
+      header { position: relative; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <h1>💼 PR Saver</h1>
+      <button class="toggle" id="collapseBtn">Toggle Sidebar</button>
+      <div class="nav">
+        <button class="active" data-view="dashboard">Dashboard</button>
+        <button data-view="prs">PRs &amp; POs</button>
+        <button data-view="analysis">Analysis</button>
+      </div>
+    </aside>
+    <div class="content">
+      <header>
+        <div>
+          <div class="badge">Single Page · Offline Ready</div>
+          <h2 style="margin: 8px 0 0;">Savings Control Center</h2>
+        </div>
+        <div class="actions">
+          <button class="theme-toggle" id="themeToggle">🌗 Theme</button>
+          <button class="btn secondary" id="snapshotBtn">📸 Dashboard Snapshot</button>
+        </div>
+      </header>
+
+      <section class="view active" id="dashboardView">
+        <div class="grid cards" id="summaryCards"></div>
+        <div class="grid" style="grid-template-columns: 2fr 1fr; margin-top: 20px; gap: 20px;">
+          <div class="panel">
+            <div class="flex" style="justify-content: space-between; align-items: center;">
+              <h2>Performance Trends</h2>
+              <div class="chip" id="periodChip">Live</div>
+            </div>
+            <canvas id="trendChart" height="120"></canvas>
+          </div>
+          <div class="panel">
+            <h2>Savings Breakdown</h2>
+            <canvas id="donutChart" height="120"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="prsView">
+        <div class="panel">
+          <div class="flex" style="justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h2>Add / Edit PR</h2>
+            <div class="flex">
+              <button class="btn secondary" id="importBtn">⬆️ Import Excel</button>
+              <input type="file" id="fileInput" accept=".xlsx, .xls" style="display:none" />
+              <button class="btn primary" id="exportBtn">⬇️ Export Excel</button>
+            </div>
+          </div>
+          <form id="prForm">
+            <label>PR Year
+              <select id="prYear" required></select>
+            </label>
+            <label>PR Number (6 digits)
+              <input type="text" id="prNumber" pattern="\\d{6}" required placeholder="000123" />
+            </label>
+            <label>Negotiation Number (optional)
+              <div class="flex" style="gap:8px;">
+                <select id="negYear"></select>
+                <input type="text" id="negNumber" pattern="\\d{6}" placeholder="000456" />
+              </div>
+            </label>
+            <label>PO Number (optional)
+              <div class="flex" style="gap:8px;">
+                <select id="poYear"></select>
+                <input type="text" id="poNumber" pattern="\\d{6}" placeholder="000789" />
+              </div>
+            </label>
+            <label>Approved Budget (AED)
+              <input type="number" id="approvedBudget" min="0" step="0.01" required />
+            </label>
+            <label>First Supplier Submission (AED)
+              <input type="number" id="firstSubmission" min="0" step="0.01" required />
+            </label>
+            <label>Final Negotiated Price (AED)
+              <input type="number" id="finalPrice" min="0" step="0.01" required />
+            </label>
+            <div class="square">
+              <h4>Saving vs Approved Budget</h4>
+              <div class="big" id="budgetSaving">0%</div>
+            </div>
+            <div class="square">
+              <h4>Saving vs First Submission</h4>
+              <div class="big" id="submissionSaving">0%</div>
+            </div>
+          </form>
+          <div class="flex" style="margin-top: 14px;">
+            <button class="btn primary" id="saveBtn">💾 Save Project</button>
+            <button class="btn secondary" id="resetBtn" type="button">Reset</button>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top: 20px;">
+          <div class="flex" style="justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <h2>PR Registry</h2>
+            <span class="chip" id="totalChip">0 PRs</span>
+          </div>
+          <table id="prTable">
+            <thead>
+              <tr>
+                <th>PR #</th>
+                <th>Negotiation</th>
+                <th>PO</th>
+                <th>Budget (AED)</th>
+                <th>First (AED)</th>
+                <th>Final (AED)</th>
+                <th>Budget Save %</th>
+                <th>Submission Save %</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="view" id="analysisView">
+        <div class="grid" style="grid-template-columns: 2fr 1fr; gap: 20px;">
+          <div class="panel">
+            <h2>Insight Highlights</h2>
+            <div class="insight-grid" id="insights"></div>
+          </div>
+          <div class="panel">
+            <h2>Data Snapshot</h2>
+            <div id="snapshotData" class="upload">Import data or start adding PRs to see quick stats.</div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'pr-savings-data-v1';
+    const yearRange = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() + 2 - i);
+    const state = { prs: [], editingIndex: null, theme: 'light' };
+    let trendChart, donutChart;
+
+    const elements = {
+      views: {
+        dashboard: document.getElementById('dashboardView'),
+        prs: document.getElementById('prsView'),
+        analysis: document.getElementById('analysisView'),
+      },
+      navButtons: document.querySelectorAll('.nav button'),
+      prYear: document.getElementById('prYear'),
+      negYear: document.getElementById('negYear'),
+      poYear: document.getElementById('poYear'),
+      prNumber: document.getElementById('prNumber'),
+      negNumber: document.getElementById('negNumber'),
+      poNumber: document.getElementById('poNumber'),
+      approvedBudget: document.getElementById('approvedBudget'),
+      firstSubmission: document.getElementById('firstSubmission'),
+      finalPrice: document.getElementById('finalPrice'),
+      budgetSaving: document.getElementById('budgetSaving'),
+      submissionSaving: document.getElementById('submissionSaving'),
+      prTableBody: document.querySelector('#prTable tbody'),
+      totalChip: document.getElementById('totalChip'),
+      summaryCards: document.getElementById('summaryCards'),
+      insights: document.getElementById('insights'),
+      snapshotData: document.getElementById('snapshotData'),
+      themeToggle: document.getElementById('themeToggle'),
+      collapseBtn: document.getElementById('collapseBtn'),
+      sidebar: document.getElementById('sidebar'),
+      periodChip: document.getElementById('periodChip'),
+      snapshotBtn: document.getElementById('snapshotBtn'),
+      fileInput: document.getElementById('fileInput'),
+    };
+
+    function populateYears() {
+      [elements.prYear, elements.negYear, elements.poYear].forEach(select => {
+        select.innerHTML = '<option value="">Year</option>' + yearRange.map(y => `<option value="${y}">${y}</option>`).join('');
+        select.value = new Date().getFullYear();
+      });
+    }
+
+    function loadState() {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) Object.assign(state, JSON.parse(stored));
+      document.body.classList.toggle('dark', state.theme === 'dark');
+    }
+
+    function persistState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function formatCurrency(val) {
+      return Number(val).toLocaleString('en-AE', { style: 'currency', currency: 'AED', maximumFractionDigits: 0 });
+    }
+
+    function calcSavings(pr) {
+      const budgetSave = pr.approvedBudget ? ((pr.approvedBudget - pr.finalPrice) / pr.approvedBudget) * 100 : 0;
+      const submissionSave = pr.firstSubmission ? ((pr.firstSubmission - pr.finalPrice) / pr.firstSubmission) * 100 : 0;
+      return { budgetSave: Number(budgetSave.toFixed(2)), submissionSave: Number(submissionSave.toFixed(2)) };
+    }
+
+    function updateSavingsPreview() {
+      const budget = parseFloat(elements.approvedBudget.value) || 0;
+      const first = parseFloat(elements.firstSubmission.value) || 0;
+      const final = parseFloat(elements.finalPrice.value) || 0;
+      const budgetSave = budget ? ((budget - final) / budget) * 100 : 0;
+      const submissionSave = first ? ((first - final) / first) * 100 : 0;
+      elements.budgetSaving.textContent = `${budgetSave.toFixed(2)}%`;
+      elements.submissionSaving.textContent = `${submissionSave.toFixed(2)}%`;
+    }
+
+    function switchView(name) {
+      Object.entries(elements.views).forEach(([key, view]) => {
+        view.classList.toggle('active', key === name);
+      });
+      elements.navButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.view === name));
+    }
+
+    function renderSummary() {
+      const totalPRs = state.prs.length;
+      const totalValue = state.prs.reduce((sum, pr) => sum + (pr.finalPrice || 0), 0);
+      const poEntries = state.prs.filter(pr => pr.poNumber);
+      const totalPOs = poEntries.length;
+      const poSavings = poEntries.reduce((acc, pr) => acc + ((pr.approvedBudget || 0) - (pr.finalPrice || 0)), 0);
+      const poBudget = poEntries.reduce((acc, pr) => acc + (pr.approvedBudget || 0), 0);
+      const poSavingPct = poBudget ? (poSavings / poBudget) * 100 : 0;
+      const noSavingsPO = poEntries.filter(pr => (pr.approvedBudget || 0) <= (pr.finalPrice || 0)).length;
+
+      elements.summaryCards.innerHTML = `
+        <div class="card"><h3>Total PRs</h3><div class="value">${totalPRs}</div></div>
+        <div class="card"><h3>Total PR Value (AED)</h3><div class="value">${formatCurrency(totalValue)}</div></div>
+        <div class="card"><h3>Total POs</h3><div class="value">${totalPOs}</div></div>
+        <div class="card"><h3>PO Saving %</h3><div class="value">${poSavingPct.toFixed(2)}% <span class="trend ${poSavingPct >= 0 ? 'up' : 'down'}">${poSavingPct >= 0 ? '▲' : '▼'}</span></div></div>
+        <div class="card"><h3>POs w/ No Savings or Extra Spend</h3><div class="value">${noSavingsPO}</div></div>
+      `;
+    }
+
+    function renderTable() {
+      elements.prTableBody.innerHTML = '';
+      state.prs.forEach((pr, idx) => {
+        const { budgetSave, submissionSave } = calcSavings(pr);
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${pr.prId}</td>
+          <td>${pr.negotiationId || '—'}</td>
+          <td>${pr.poId || '—'}</td>
+          <td>${formatCurrency(pr.approvedBudget)}</td>
+          <td>${formatCurrency(pr.firstSubmission)}</td>
+          <td>${formatCurrency(pr.finalPrice)}</td>
+          <td><span class="chip">${budgetSave}%</span></td>
+          <td><span class="chip">${submissionSave}%</span></td>
+          <td>
+            <button class="btn secondary" data-action="edit" data-index="${idx}">✏️</button>
+            <button class="btn danger" data-action="delete" data-index="${idx}">🗑️</button>
+          </td>`;
+        elements.prTableBody.appendChild(row);
+      });
+      elements.totalChip.textContent = `${state.prs.length} PRs`;
+    }
+
+    function renderCharts() {
+      const labels = state.prs.map(pr => pr.prId);
+      const budgetData = state.prs.map(pr => calcSavings(pr).budgetSave);
+      const submissionData = state.prs.map(pr => calcSavings(pr).submissionSave);
+
+      if (trendChart) trendChart.destroy();
+      trendChart = new Chart(document.getElementById('trendChart'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Budget Saving %', data: budgetData, backgroundColor: '#22c55e' },
+            { label: 'Submission Saving %', data: submissionData, backgroundColor: '#60a5fa' }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { position: 'bottom' } },
+          scales: { y: { beginAtZero: true, ticks: { callback: v => v + '%' } } }
+        }
+      });
+
+      const savingsCategory = { positive: 0, neutral: 0, negative: 0 };
+      state.prs.forEach(pr => {
+        const { budgetSave } = calcSavings(pr);
+        if (budgetSave > 0) savingsCategory.positive++;
+        else if (budgetSave === 0) savingsCategory.neutral++;
+        else savingsCategory.negative++;
+      });
+
+      if (donutChart) donutChart.destroy();
+      donutChart = new Chart(document.getElementById('donutChart'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Positive', 'Flat', 'Overspend'],
+          datasets: [{ data: [savingsCategory.positive, savingsCategory.neutral, savingsCategory.negative], backgroundColor: ['#16a34a', '#fbbf24', '#ef4444'] }]
+        },
+        options: { plugins: { legend: { position: 'bottom' } } }
+      });
+    }
+
+    function renderInsights() {
+      const total = state.prs.length;
+      const avgBudgetSave = total ? state.prs.reduce((acc, pr) => acc + calcSavings(pr).budgetSave, 0) / total : 0;
+      const avgSubmissionSave = total ? state.prs.reduce((acc, pr) => acc + calcSavings(pr).submissionSave, 0) / total : 0;
+      const topSaving = state.prs.reduce((best, pr) => {
+        const s = calcSavings(pr).budgetSave;
+        return s > (best?.saving ?? -Infinity) ? { saving: s, pr } : best;
+      }, null);
+
+      elements.insights.innerHTML = `
+        <div class="square"><h4>Average Budget Saving</h4><div class="big">${avgBudgetSave.toFixed(2)}%</div></div>
+        <div class="square"><h4>Average Submission Saving</h4><div class="big">${avgSubmissionSave.toFixed(2)}%</div></div>
+        <div class="square"><h4>Best Performer</h4><div>${topSaving ? `${topSaving.pr.prId} at ${topSaving.saving.toFixed(2)}%` : 'Add PRs to see best performer'}</div></div>
+      `;
+      elements.snapshotData.textContent = `Total records: ${total}. Avg budget saving: ${avgBudgetSave.toFixed(2)}%. Avg submission saving: ${avgSubmissionSave.toFixed(2)}%.`;
+    }
+
+    function resetForm() {
+      document.getElementById('prForm').reset();
+      populateYears();
+      elements.budgetSaving.textContent = '0%';
+      elements.submissionSaving.textContent = '0%';
+      state.editingIndex = null;
+    }
+
+    function savePR() {
+      const requiredFilled = elements.prYear.value && elements.prNumber.checkValidity() && elements.approvedBudget.value && elements.firstSubmission.value && elements.finalPrice.value;
+      if (!requiredFilled) {
+        alert('Please fill required fields with valid values.');
+        return;
+      }
+      const pr = {
+        prId: `PR-${elements.prYear.value}-${elements.prNumber.value}`,
+        negotiationId: elements.negNumber.value ? `GCAA-${elements.negYear.value || new Date().getFullYear()}-${elements.negNumber.value}` : '',
+        poId: elements.poNumber.value ? `PO-${elements.poYear.value || new Date().getFullYear()}-${elements.poNumber.value}` : '',
+        approvedBudget: parseFloat(elements.approvedBudget.value),
+        firstSubmission: parseFloat(elements.firstSubmission.value),
+        finalPrice: parseFloat(elements.finalPrice.value),
+      };
+
+      if (state.editingIndex !== null) {
+        state.prs[state.editingIndex] = pr;
+      } else {
+        state.prs.push(pr);
+      }
+      persistState();
+      renderAll();
+      resetForm();
+    }
+
+    function handleTableAction(e) {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const idx = Number(btn.dataset.index);
+      const action = btn.dataset.action;
+      if (action === 'delete') {
+        state.prs.splice(idx, 1);
+        persistState();
+        renderAll();
+      } else if (action === 'edit') {
+        const pr = state.prs[idx];
+        state.editingIndex = idx;
+        const [prPrefix, prYear, prNum] = pr.prId.split('-');
+        const negParts = pr.negotiationId ? pr.negotiationId.split('-') : [];
+        const poParts = pr.poId ? pr.poId.split('-') : [];
+        elements.prYear.value = prYear;
+        elements.prNumber.value = prNum;
+        elements.negYear.value = negParts[1] || new Date().getFullYear();
+        elements.negNumber.value = negParts[2] || '';
+        elements.poYear.value = poParts[1] || new Date().getFullYear();
+        elements.poNumber.value = poParts[2] || '';
+        elements.approvedBudget.value = pr.approvedBudget;
+        elements.firstSubmission.value = pr.firstSubmission;
+        elements.finalPrice.value = pr.finalPrice;
+        updateSavingsPreview();
+        switchView('prs');
+      }
+    }
+
+    function renderAll() {
+      renderSummary();
+      renderTable();
+      renderCharts();
+      renderInsights();
+    }
+
+    function exportExcel() {
+      const data = state.prs.map(pr => ({
+        PR: pr.prId,
+        Negotiation: pr.negotiationId || '',
+        PO: pr.poId || '',
+        ApprovedBudget: pr.approvedBudget,
+        FirstSubmission: pr.firstSubmission,
+        FinalPrice: pr.finalPrice,
+        BudgetSavingPct: calcSavings(pr).budgetSave,
+        SubmissionSavingPct: calcSavings(pr).submissionSave,
+      }));
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'PRs');
+      XLSX.writeFile(wb, 'pr-savings.xlsx');
+    }
+
+    function importExcel(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+        state.prs = rows.map(row => ({
+          prId: row.PR || '',
+          negotiationId: row.Negotiation || '',
+          poId: row.PO || '',
+          approvedBudget: Number(row.ApprovedBudget || 0),
+          firstSubmission: Number(row.FirstSubmission || 0),
+          finalPrice: Number(row.FinalPrice || 0),
+        })).filter(pr => pr.prId);
+        persistState();
+        renderAll();
+        alert('Import completed');
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function takeSnapshot() {
+      const node = document.getElementById('dashboardView');
+      html2canvas(node).then(canvas => {
+        const link = document.createElement('a');
+        link.download = 'dashboard-snapshot.png';
+        link.href = canvas.toDataURL();
+        link.click();
+      });
+    }
+
+    function initEvents() {
+      elements.navButtons.forEach(btn => btn.addEventListener('click', () => switchView(btn.dataset.view)));
+      ['approvedBudget', 'firstSubmission', 'finalPrice'].forEach(id => document.getElementById(id).addEventListener('input', updateSavingsPreview));
+      document.getElementById('saveBtn').addEventListener('click', savePR);
+      document.getElementById('resetBtn').addEventListener('click', resetForm);
+      elements.prTableBody.addEventListener('click', handleTableAction);
+      elements.themeToggle.addEventListener('click', () => {
+        state.theme = state.theme === 'dark' ? 'light' : 'dark';
+        document.body.classList.toggle('dark', state.theme === 'dark');
+        persistState();
+      });
+      elements.collapseBtn.addEventListener('click', () => elements.sidebar.classList.toggle('collapsed'));
+      elements.snapshotBtn.addEventListener('click', takeSnapshot);
+      document.getElementById('exportBtn').addEventListener('click', exportExcel);
+      document.getElementById('importBtn').addEventListener('click', () => elements.fileInput.click());
+      elements.fileInput.addEventListener('change', e => {
+        if (e.target.files[0]) importExcel(e.target.files[0]);
+        e.target.value = '';
+      });
+    }
+
+    populateYears();
+    loadState();
+    initEvents();
+    renderAll();
+    updateSavingsPreview();
+  </script>
+</body>
+</html>
