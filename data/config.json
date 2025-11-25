@@ -1,9 +1,0 @@
-{
-  "appName": "Savings Dashboard",
-  "currency": "AED",
-  "defaultYear": 2024,
-  "theme": "light",
-  "dashboard": {
-    "recentLimit": 6
-  }
-}
