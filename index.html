@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Savings Dashboard</title>
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+</head>
+<body>
+  <div class="page" id="app">
+    <aside class="sidebar" data-collapsed="false">
+      <div class="sidebar__header">
+        <div class="logo">💠</div>
+        <div>
+          <div class="title">Savings</div>
+          <div class="subtitle">Dashboard</div>
+        </div>
+        <button class="icon-btn" id="collapseBtn" aria-label="Toggle sidebar">‹</button>
+      </div>
+      <nav class="sidebar__nav" id="nav">
+        <button class="nav__item active" data-route="dashboard">Dashboard</button>
+        <button class="nav__item" data-route="prs">PRs & POs</button>
+        <button class="nav__item" data-route="analysis">Analysis</button>
+      </nav>
+      <div class="sidebar__footer">
+        <label class="theme-toggle">
+          <input type="checkbox" id="themeToggle" />
+          <span class="slider"></span>
+          <span class="label">Dark mode</span>
+        </label>
+      </div>
+    </aside>
+
+    <main class="content">
+      <header class="content__header">
+        <div>
+          <p class="eyebrow">Overview</p>
+          <h1 id="pageTitle">Savings Dashboard</h1>
+          <p class="muted" id="pageSubtitle">Track PR volumes, PO coverage, and your negotiated savings at a glance.</p>
+        </div>
+        <div class="header__actions">
+          <button class="btn ghost" id="snapshotBtn">Snapshot</button>
+          <button class="btn primary" id="refreshBtn">Refresh Data</button>
+        </div>
+      </header>
+
+      <section class="view" data-view="dashboard">
+        <section class="grid cards" id="summaryCards"></section>
+
+        <section class="grid split">
+          <div class="panel" id="chartSavings">
+            <div class="panel__header">
+              <div>
+                <p class="eyebrow">Savings Trend</p>
+                <h2>Budget vs Negotiated</h2>
+              </div>
+              <div class="legend">
+                <span class="dot primary"></span> Budget savings
+                <span class="dot accent"></span> Submission savings
+              </div>
+            </div>
+            <div class="chart" id="trendChart"></div>
+          </div>
+
+          <div class="panel" id="chartPO">
+            <div class="panel__header">
+              <div>
+                <p class="eyebrow">PO Health</p>
+                <h2>PO Savings Mix</h2>
+              </div>
+              <div class="legend">
+                <span class="dot success"></span> Savings
+                <span class="dot warning"></span> No Savings
+                <span class="dot danger"></span> Over Budget
+              </div>
+            </div>
+            <div class="chart" id="poChart"></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel__header">
+            <div>
+              <p class="eyebrow">Recent PRs</p>
+              <h2>Latest updates</h2>
+            </div>
+            <div class="header__actions">
+              <button class="btn ghost" data-route="prs">Add PR</button>
+            </div>
+          </div>
+          <div class="table" id="recentTable"></div>
+        </section>
+      </section>
+
+      <section class="view hidden" data-view="prs">
+        <div class="grid split narrow">
+          <section class="panel form-panel">
+            <div class="panel__header">
+              <div>
+                <p class="eyebrow">Data Entry</p>
+                <h2 id="formTitle">Add PR</h2>
+              </div>
+              <div class="legend compact">
+                <span class="dot success"></span> Auto previews update live
+              </div>
+            </div>
+
+            <form id="prForm" class="form">
+              <div class="form__row">
+                <label>PR Number <span class="required">*</span></label>
+                <div class="input-group">
+                  <select id="prYear" required></select>
+                  <input id="prNumber" type="text" placeholder="000123" required pattern="\d{6}" />
+                  <div class="prefix">PR-<span id="prYearPreview">2024</span>-</div>
+                </div>
+                <p class="help">Enter six digits; the prefix updates with the selected year.</p>
+              </div>
+
+              <div class="form__row">
+                <label>Negotiation Number</label>
+                <div class="input-group">
+                  <select id="negYear"></select>
+                  <input id="negNumber" type="text" placeholder="000123" pattern="\d{6}" />
+                  <div class="prefix">GCAA-<span id="negYearPreview">2024</span>-</div>
+                </div>
+                <p class="help">Optional reference if a negotiation cycle exists.</p>
+              </div>
+
+              <div class="form__row">
+                <label>PO Number</label>
+                <div class="input-group">
+                  <select id="poYear"></select>
+                  <input id="poNumber" type="text" placeholder="000123" pattern="\d{6}" />
+                  <div class="prefix">PO-<span id="poYearPreview">2024</span>-</div>
+                </div>
+                <p class="help">Leave blank if a PO was not created yet.</p>
+              </div>
+
+              <div class="form__row triple">
+                <label>Approved Budget (AED) <span class="required">*</span></label>
+                <input id="approvedBudget" type="number" min="0" step="0.01" required />
+
+                <label>First Supplier Submission (AED) <span class="required">*</span></label>
+                <input id="firstSubmission" type="number" min="0" step="0.01" required />
+
+                <label>Final Negotiated Price (AED) <span class="required">*</span></label>
+                <input id="finalPrice" type="number" min="0" step="0.01" required />
+              </div>
+
+              <div class="form__row inline">
+                <label class="checkbox">
+                  <input type="checkbox" id="hasPO" />
+                  <span>PO Created</span>
+                </label>
+              </div>
+
+              <div class="form__row savings-preview" id="savingsPreview">
+                <div class="preview-box">
+                  <p class="eyebrow">Budget vs Final</p>
+                  <h3 id="budgetSavings">0%</h3>
+                  <p class="muted">Savings against approved budget</p>
+                </div>
+                <div class="preview-box">
+                  <p class="eyebrow">Submission vs Final</p>
+                  <h3 id="submissionSavings">0%</h3>
+                  <p class="muted">Savings against first submission</p>
+                </div>
+              </div>
+
+              <div class="form__actions">
+                <button type="reset" class="btn ghost">Reset</button>
+                <button type="submit" class="btn primary" id="formSubmit">Save PR</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="panel">
+            <div class="panel__header">
+              <div>
+                <p class="eyebrow">Records</p>
+                <h2>PRs & POs</h2>
+              </div>
+              <div class="header__actions">
+                <button class="btn ghost" id="exportBtn">Export</button>
+                <label class="btn ghost file-label" for="importInput">Import</label>
+                <input type="file" id="importInput" accept=".csv, .xlsx, .xls" hidden />
+              </div>
+            </div>
+            <div class="table prs" id="prTable"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view hidden" data-view="analysis">
+        <section class="grid cards" id="analysisCards"></section>
+        <section class="panel">
+          <div class="panel__header">
+            <div>
+              <p class="eyebrow">Year over Year</p>
+              <h2>Annual performance</h2>
+            </div>
+            <p class="muted">Compare PR counts, PO coverage, and avg savings by year.</p>
+          </div>
+          <div class="table" id="analysisTable"></div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script id="inline-config" type="application/json">
+    {
+      "appName": "Savings Dashboard",
+      "currency": "AED",
+      "defaultYear": 2024,
+      "dashboard": { "recentLimit": 6 }
+    }
+  </script>
+  <script id="inline-settings" type="application/json">
+    { "years": [2023, 2024, 2025, 2026], "currency": "AED", "sidebarCollapsed": false }
+  </script>
+  <script id="inline-preferences" type="application/json">
+    { "theme": "light", "showAdvancedSavings": true, "currency": "AED" }
+  </script>
+  <script id="inline-prs" type="application/json">
+    [
+      {"prNumber":"PR-2024-000321","negotiationNumber":"GCAA-2024-000321","poNumber":"PO-2024-000321","approvedBudget":125000,"firstSubmission":119500,"finalPrice":98000,"hasPO":true},
+      {"prNumber":"PR-2024-000389","negotiationNumber":"GCAA-2024-000389","poNumber":"PO-2024-000389","approvedBudget":88000,"firstSubmission":91000,"finalPrice":87000,"hasPO":true},
+      {"prNumber":"PR-2023-000112","negotiationNumber":"GCAA-2023-000112","poNumber":"PO-2023-000112","approvedBudget":56000,"firstSubmission":54000,"finalPrice":56000,"hasPO":true},
+      {"prNumber":"PR-2024-000207","negotiationNumber":"","poNumber":"","approvedBudget":46000,"firstSubmission":46250,"finalPrice":45100,"hasPO":false}
+    ]
+  </script>
+  <script src="assets/js/utils.js"></script>
+  <script src="assets/js/dataStore.js"></script>
+  <script src="assets/js/theme.js"></script>
+  <script src="assets/js/dashboard.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
