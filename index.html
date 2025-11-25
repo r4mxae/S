@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Savings Dashboard</title>
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <div class="page" id="app">
+    <aside class="sidebar" data-collapsed="false">
+      <div class="sidebar__header">
+        <div class="logo">💠</div>
+        <div>
+          <div class="title">Savings</div>
+          <div class="subtitle">Dashboard</div>
+        </div>
+        <button class="icon-btn" id="collapseBtn" aria-label="Toggle sidebar">⟘</button>
+      </div>
+      <nav class="sidebar__nav">
+        <a class="nav__item active" href="index.html">Dashboard</a>
+        <a class="nav__item" href="add.html">Add PR</a>
+      </nav>
+      <div class="sidebar__footer">
+        <label class="theme-toggle">
+          <input type="checkbox" id="themeToggle" />
+          <span class="slider"></span>
+          <span class="label">Dark mode</span>
+        </label>
+      </div>
+    </aside>
+
+    <main class="content">
+      <header class="content__header">
+        <div>
+          <p class="eyebrow">Overview</p>
+          <h1 id="pageTitle">Savings Dashboard</h1>
+          <p class="muted">Track PR volumes, PO coverage, and your negotiated savings at a glance.</p>
+        </div>
+        <div class="header__actions">
+          <a class="btn ghost" href="add.html">Add PR</a>
+          <button class="btn primary" id="refreshBtn">Refresh Data</button>
+        </div>
+      </header>
+
+      <section class="grid cards" id="summaryCards"></section>
+
+      <section class="grid split">
+        <div class="panel" id="chartSavings">
+          <div class="panel__header">
+            <div>
+              <p class="eyebrow">Savings Trend</p>
+              <h2>Budget vs Negotiated</h2>
+            </div>
+            <div class="legend">
+              <span class="dot primary"></span> Budget savings
+              <span class="dot accent"></span> Submission savings
+            </div>
+          </div>
+          <div class="chart" id="trendChart"></div>
+        </div>
+
+        <div class="panel" id="chartPO">
+          <div class="panel__header">
+            <div>
+              <p class="eyebrow">PO Health</p>
+              <h2>PO Savings Mix</h2>
+            </div>
+            <div class="legend">
+              <span class="dot success"></span> Savings
+              <span class="dot warning"></span> No Savings
+              <span class="dot danger"></span> Over Budget
+            </div>
+          </div>
+          <div class="chart" id="poChart"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel__header">
+          <div>
+            <p class="eyebrow">Recent PRs</p>
+            <h2>Latest updates</h2>
+          </div>
+          <a class="btn ghost" href="add.html">Add PR</a>
+        </div>
+        <div class="table" id="recentTable"></div>
+      </section>
+    </main>
+  </div>
+
+  <script id="inline-config" type="application/json">
+    {
+      "appName": "Savings Dashboard",
+      "currency": "AED",
+      "defaultYear": 2024,
+      "dashboard": { "recentLimit": 6 }
+    }
+  </script>
+  <script id="inline-settings" type="application/json">
+    { "years": [2023, 2024, 2025, 2026], "currency": "AED", "sidebarCollapsed": false }
+  </script>
+  <script id="inline-preferences" type="application/json">
+    { "theme": "light", "showAdvancedSavings": true, "currency": "AED" }
+  </script>
+  <script id="inline-prs" type="application/json">
+    [
+      {"prNumber":"PR-2024-000321","negotiationNumber":"GCAA-2024-000321","poNumber":"PO-2024-000321","approvedBudget":125000,"firstSubmission":119500,"finalPrice":98000,"hasPO":true},
+      {"prNumber":"PR-2024-000389","negotiationNumber":"GCAA-2024-000389","poNumber":"PO-2024-000389","approvedBudget":88000,"firstSubmission":91000,"finalPrice":87000,"hasPO":true},
+      {"prNumber":"PR-2023-000112","negotiationNumber":"GCAA-2023-000112","poNumber":"PO-2023-000112","approvedBudget":56000,"firstSubmission":54000,"finalPrice":56000,"hasPO":true},
+      {"prNumber":"PR-2024-000207","negotiationNumber":"","poNumber":"","approvedBudget":46000,"firstSubmission":46250,"finalPrice":45100,"hasPO":false}
+    ]
+  </script>
+  <script src="assets/js/dataStore.js"></script>
+  <script src="assets/js/theme.js"></script>
+  <script src="assets/js/dashboard.js"></script>
+</body>
+</html>
