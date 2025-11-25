@@ -14,15 +14,25 @@
     AppStore.savePreferences({ theme: next });
   });
 
+  const setCollapseIcon = (isCollapsed) => {
+    if (!collapseBtn) return;
+    collapseBtn.textContent = isCollapsed ? '›' : '‹';
+  };
+
   collapseBtn?.addEventListener('click', () => {
     const collapsed = sidebar.getAttribute('data-collapsed') === 'true';
-    sidebar.setAttribute('data-collapsed', (!collapsed).toString());
-    AppStore.settings.sidebarCollapsed = !collapsed;
+    const nextState = !collapsed;
+    sidebar.setAttribute('data-collapsed', nextState.toString());
+    AppStore.settings.sidebarCollapsed = nextState;
     localStorage.setItem('pr-dashboard-settings', JSON.stringify(AppStore.settings));
+    setCollapseIcon(nextState);
   });
 
   const collapsed = AppStore.settings.sidebarCollapsed;
   if (typeof collapsed === 'boolean') {
     sidebar?.setAttribute('data-collapsed', collapsed.toString());
+    setCollapseIcon(collapsed);
+  } else {
+    setCollapseIcon(false);
   }
 })();

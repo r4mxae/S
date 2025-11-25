@@ -22,13 +22,21 @@
     const budget = parseFloat(document.getElementById('approvedBudget').value) || 0;
     const first = parseFloat(document.getElementById('firstSubmission').value) || 0;
     const final = parseFloat(document.getElementById('finalPrice').value) || 0;
-    const budgetPct = budget ? ((budget - final) / budget) * 100 : 0;
-    const submissionPct = first ? ((first - final) / first) * 100 : 0;
-    budgetEl.textContent = `${budgetPct.toFixed(1)}%`;
-    submissionEl.textContent = `${submissionPct.toFixed(1)}%`;
+    const budgetPct = AppUtils.computeSavingsBudget(budget, final);
+    const submissionPct = AppUtils.computeSavingsSubmission(first, final);
+    budgetEl.textContent = AppUtils.formatPercent(budgetPct);
+    submissionEl.textContent = AppUtils.formatPercent(submissionPct);
   };
 
-  form.addEventListener('input', computePreview);
+  const poInput = document.getElementById('poNumber');
+  const hasPOCheckbox = document.getElementById('hasPO');
+
+  form.addEventListener('input', (event) => {
+    if (event.target === poInput && poInput.value.trim()) {
+      hasPOCheckbox.checked = true;
+    }
+    computePreview();
+  });
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();

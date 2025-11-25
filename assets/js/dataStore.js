@@ -35,7 +35,7 @@ class DataStore {
   loadPreferences() {
     const fromStorage = localStorage.getItem(this.preferencesKey);
     if (fromStorage) {
-      return JSON.parse(fromStorage);
+      try { return JSON.parse(fromStorage); } catch (err) {}
     }
     const prefs = this.loadJSON('preferences');
     localStorage.setItem(this.preferencesKey, JSON.stringify(prefs));
@@ -52,46 +52,79 @@ class DataStore {
     return defaults;
   }
 
-  savePreferences(prefs) {
-    this.preferences = { ...this.preferences, ...prefs };
-    localStorage.setItem(this.preferencesKey, JSON.stringify(this.preferences));
+  normalizePR(record) {
+    return {
+      prNumber: record.prNumber || '',
+      negotiationNumber: record.negotiationNumber || '',
+      poNumber: record.poNumber || '',
+      approvedBudget: Number(record.approvedBudget) || 0,
+      firstSubmission: Number(record.firstSubmission) || 0,
+      finalPrice: Number(record.finalPrice) || 0,
+      hasPO: Boolean(record.hasPO) || Boolean(record.poNumber),
+      createdAt: record.createdAt || new Date().toISOString()
+    };
   }
 
   loadPRs() {
     const saved = localStorage.getItem(this.storageKey);
     if (saved) {
-      return JSON.parse(saved);
+      try { return JSON.parse(saved).map(pr => this.normalizePR(pr)); } catch (err) {}
     }
     const initial = this.loadJSON('prs');
-    localStorage.setItem(this.storageKey, JSON.stringify(initial));
-    return initial;
+    const normalized = Array.isArray(initial) ? initial.map(pr => this.normalizePR(pr)) : [];
+    localStorage.setItem(this.storageKey, JSON.stringify(normalized));
+    return normalized;
   }
 
   addPR(record) {
-    this.prs = [record, ...this.prs];
+    const pr = this.normalizePR(record);
+    this.prs = [pr, ...this.prs];
     localStorage.setItem(this.storageKey, JSON.stringify(this.prs));
   }
 
   getSummary() {
+    const totals = this.prs.reduce((acc, pr) => {
+      const budgetSavings = AppUtils.computeSavingsBudget(pr.approvedBudget, pr.finalPrice);
+      acc.totalValue += pr.finalPrice || 0;
+      acc.totalBudgetSavings += budgetSavings;
+
+      if (pr.hasPO && pr.poNumber) {
+        acc.totalPOs += 1;
+        if (budgetSavings > 0) acc.poWithSavings += 1;
+        if (budgetSavings === 0) acc.poNoSavings += 1;
+        if (budgetSavings < 0) acc.poOverspend += 1;
+      }
+      return acc;
+    }, { totalValue: 0, totalBudgetSavings: 0, totalPOs: 0, poWithSavings: 0, poNoSavings: 0, poOverspend: 0 });
+
     const totalPRs = this.prs.length;
-    const totalValue = this.prs.reduce((sum, pr) => sum + (pr.finalPrice || 0), 0);
-    const totalPOs = this.prs.filter(pr => pr.hasPO && pr.poNumber).length;
-    const poWithSavings = this.prs.filter(pr => pr.hasPO && pr.poNumber && this.savingsAgainstBudget(pr) > 0);
-    const poNoSavings = this.prs.filter(pr => pr.hasPO && pr.poNumber && this.savingsAgainstBudget(pr) === 0);
-    const poOverspend = this.prs.filter(pr => pr.hasPO && pr.poNumber && this.savingsAgainstBudget(pr) < 0);
-    const savingsPercent = poWithSavings.length && totalPOs ? Math.round((poWithSavings.length / totalPOs) * 100) : 0;
+    const avgBudgetSavings = totalPRs ? totals.totalBudgetSavings / totalPRs : 0;
+    const poCoverage = totalPRs ? Math.round((totals.totalPOs / totalPRs) * 100) : 0;
+    const savingsPercent = totals.totalPOs ? Math.round((totals.poWithSavings / totals.totalPOs) * 100) : 0;
 
-    return { totalPRs, totalValue, totalPOs, savingsPercent, poNoSavings: poNoSavings.length, poOverspend: poOverspend.length };
+    return {
+      totalPRs,
+      totalValue: totals.totalValue,
+      totalPOs: totals.totalPOs,
+      savingsPercent,
+      poNoSavings: totals.poNoSavings,
+      poOverspend: totals.poOverspend,
+      poCoverage,
+      avgBudgetSavings
+    };
   }
 
-  savingsAgainstBudget(pr) {
-    if (!pr.approvedBudget) return 0;
-    return ((pr.approvedBudget - pr.finalPrice) / pr.approvedBudget) * 100;
+  getTrendRows(limit = 6) {
+    const rows = this.prs.slice(0, limit).map(pr => ({
+      title: pr.prNumber,
+      budget: AppUtils.computeSavingsBudget(pr.approvedBudget, pr.finalPrice),
+      submission: AppUtils.computeSavingsSubmission(pr.firstSubmission, pr.finalPrice)
+    }));
+    return rows;
   }
 
-  savingsAgainstSubmission(pr) {
-    if (!pr.firstSubmission) return 0;
-    return ((pr.firstSubmission - pr.finalPrice) / pr.firstSubmission) * 100;
+  getRecent(limit = this.config.dashboard?.recentLimit || 6) {
+    return this.prs.slice(0, limit);
   }
 }
 
